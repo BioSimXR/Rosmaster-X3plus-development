@@ -1,0 +1,139 @@
+________________________________________________________________________________
+import subprocess
+import time
+
+print("Starting hardware drivers...")
+
+# 1. Launch LiDAR Driver
+lidar_proc = subprocess.Popen(["roslaunch", "ydlidar_ros_driver", "TG.launch"])
+
+# 2. Launch Astra Camera Driver
+camera_proc = subprocess.Popen(["roslaunch", "astra_camera", "astra.launch"])
+
+# 3. Publish Static TF (base_link -> laser_frame)
+tf_proc = subprocess.Popen([
+    "rosrun", "tf", "static_transform_publisher",
+    "0.1", "0", "0.15", "0", "0", "0", "base_link", "laser_frame", "100"
+])
+
+# 4. Launch MoveIt for the Arm
+moveit_proc = subprocess.Popen(["roslaunch", "transbot_moveit_config", "demo.launch"])
+
+# Wait for hardware nodes to initialize fully
+print("Waiting 5 seconds for drivers to initialize...")
+time.sleep(5)
+print("Drivers launched successfully!")
+________________________________________________________________________________
+import actionlib
+import moveit_commander
+import rospy
+import tf2_ros
+from geometry_msgs.msg import PoseStamped
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+
+# Initialize Jupyter as a ROS node
+rospy.init_node("jupyter_master_pipeline", anonymous=True)
+
+# Navigation Action Client
+nav_client = actionlib.SimpleActionClient("move_base", MoveBaseAction)
+
+# MoveIt Group Commanders
+moveit_commander.roscpp_initialize([])
+arm_group = moveit_commander.MoveGroupCommander("arm")
+gripper_group = moveit_commander.MoveGroupCommander("gripper")
+
+# TF Listener
+tf_buffer = tf2_ros.Buffer()
+tf_listener = tf2_ros.TransformListener(tf_buffer)
+
+print("ROS node and MoveIt commanders initialized!")
+______________________________________________________________________________
+print("--- STEP 1: Detecting Target Object ---")
+
+target_found = False
+target_trans = None
+
+while not rospy.is_shutdown() and not target_found:
+    try:
+        # Lookup transform from map frame to target block
+        target_trans = tf_buffer.lookup_transform(
+            "map", "target_block", rospy.Time(0), rospy.Duration(1.0)
+        )
+        target_found = True
+        print(
+            f"Target block located at X: {target_trans.transform.translation.x:.2f}, "
+            f"Y: {target_trans.transform.translation.y:.2f}"
+        )
+    except (
+        tf2_ros.LookupException,
+        tf2_ros.ConnectivityException,
+        tf2_ros.ExtrapolationException,
+    ):
+        print("Searching for block frame in TF...")
+        rospy.sleep(1.0)
+______________________________________________________________________________
+print("--- STEP 2: Navigating Base to Object ---")
+
+goal = MoveBaseGoal()
+goal.target_pose.header.frame_id = "map"
+goal.target_pose.header.stamp = rospy.Time.now()
+
+# Offset target by -0.4 meters so the base stops just in front of the block
+goal.target_pose.pose.position.x = target_trans.transform.translation.x - 0.4
+goal.target_pose.pose.position.y = target_trans.transform.translation.y
+goal.target_pose.pose.orientation.w = 1.0
+
+# Send goal to navigation stack
+print("Sending navigation goal...")
+# nav_client.send_goal(goal)
+# nav_client.wait_for_result() # Uncomment once move_base server is running
+
+print("Base reached destination!")
+________________________________________________________________________________
+print("--- STEP 3: Close-Up Inspection Pose ---")
+
+# Move arm to pre-configured inspection pose
+arm_group.set_named_target("inspect_pose")
+arm_group.go(wait=True)
+
+rospy.sleep(2.0)
+print("Arm in position for fine camera inspection.")
+_________________________________________________________________________________
+print("--- STEP 4: Executing Pick Routine ---")
+
+# 1. Open Gripper
+print("Opening gripper...")
+gripper_group.set_named_target("open")
+gripper_group.go(wait=True)
+
+# 2. Descend to object
+print("Lowering arm...")
+current_pose = arm_group.get_current_pose().pose
+current_pose.position.z -= 0.10
+arm_group.set_pose_target(current_pose)
+arm_group.go(wait=True)
+
+# 3. Close Gripper
+print("Grasping object...")
+gripper_group.set_named_target("close")
+gripper_group.go(wait=True)
+
+# 4. Lift Object
+print("Lifting object...")
+current_pose.position.z += 0.20
+arm_group.set_pose_target(current_pose)
+arm_group.go(wait=True)
+
+print("Pick-and-place complete!")
+___________________________________________________________________________________
+print("Shutting down background driver processes...")
+
+try:
+    lidar_proc.terminate()
+    camera_proc.terminate()
+    tf_proc.terminate()
+    moveit_proc.terminate()
+    print("All processes cleanly terminated.")
+except NameError:
+    print("Processes were not running.")
+____________________________________________________________________________________
