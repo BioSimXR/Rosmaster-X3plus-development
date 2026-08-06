@@ -1,41 +1,36 @@
 import subprocess
 import time
 
-def get_active_container_name(image_keyword="ros-melodic"):
-    """
-    Finds the name of the active Docker container matching the given image keyword.
-    """
-    try:
-        # Run 'docker ps' with a format filter to return only the Image and Name
-        cmd = ["docker", "ps", "--format", "{{.Image}} {{.Names}}"]
-        output = subprocess.check_output(cmd, text=True).strip()
-        
-        # Loop through each running container line
-        for line in output.split("\n"):
-            if image_keyword in line:
-                container_name = line.split()[-1]
-                return container_name
-                
-    except Exception as e:
-        print(f"Error fetching container name: {e}")
+# 1. Check if container exists/is running, or start it directly
+print("Ensuring Docker container is running...")
+
+# Get ID/Name of any existing container (running or stopped)
+try:
+    container_id = subprocess.check_output(
+        ["docker", "ps", "-a", "-q", "--filter", "ancestor=yahboomtechnology/ros-melodic:4.0.1"],
+        text=True
+    ).strip().split('\n')[0]
     
-    return None
-________________________________________________________________________________
-print("Starting Docker environment...")
-docker_start = subprocess.Popen(["/bin/bash", "./run_docker.sh"])
+    # Start the container if it's stopped
+    subprocess.run(["docker", "start", container_id])
+    CONTAINER_NAME = container_id
+    print(f"✅ Connected to container ID: {CONTAINER_NAME}")
+    
+except Exception as e:
+    raise RuntimeError("❌ Could not find or start the Yahboom Docker container. Please run './run_docker.sh' once in terminal first!")
 
-CONTAINER_NAME = get_active_container_name("ros-melodic")
-
+# 2. Helper function
 def run_in_docker(ros_cmd):
     full_cmd = (
-        f"source /opt/rps/melodic/setup.bash && "
-        f"source /root/yahboomcar_ws/devel/setup.bash && "
+        "source /opt/ros/melodic/setup.bash && "
+        "source /root/yahboomcar_ws/devel/setup.bash && "
         f"{ros_cmd}"
     )
     return subprocess.Popen([
-        "docker", "exec", -d, CONTAINER_NAME,
+        "docker", "exec", "-d", CONTAINER_NAME,
         "bash", "-c", full_cmd
     ])
+
 
 # 1. Launch LiDAR Driver
 
