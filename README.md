@@ -36,8 +36,13 @@ Reason: Resetting the SD card led to everything having the presets that were sta
 
 Solution: Use nano and the Bashrc file to change the presets back to what they were meant to be for the X3plus robot, having the robot type as X3plus, the LiDAR as 4ROS, and Astra_plus as the same because it was correct.
 
-Issue #3: When trying to boot the Astra camera, it keeps on connecting and disconnecting.
-Reason: Unknown
-Solution: Unsolved
+7/14 - 8/3
+Tested out robots' functions
+
+8/4/26
+Begun working on Complex Pick Place task, started working on developing the task, labeling 6 different cells doing different functions.
+
+8/6/26
+Worked on Complex Pick Place task, made good progress, finishing the first 2 cells, which are meant to set up everything that is needed to be able to complete the task.
 
 
