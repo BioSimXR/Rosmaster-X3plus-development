@@ -56,14 +56,15 @@ time.sleep(5)
 
 print("Drivers launched successfully!")
 ________________________________________________________________________________
-import actionlib
-import moveit_commander
+ros_python_code = """
 import rospy
+import moveit_commander
+import actionlib
 import tf2_ros
 from geometry_msgs.msg import PoseStamped
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
-# Initialize Jupyter as a ROS node
+# Initialize ROS Node inside Docker
 rospy.init_node("jupyter_master_pipeline", anonymous=True)
 
 # Navigation Action Client
@@ -79,6 +80,9 @@ tf_buffer = tf2_ros.Buffer()
 tf_listener = tf2_ros.TransformListener(tf_buffer)
 
 print("ROS node and MoveIt commanders initialized!")
+"""
+exec_cmd = f"python -c \"{ros_python_code}\""
+run_in_docker(exec_cmd)
 ______________________________________________________________________________
 print("--- STEP 1: Detecting Target Object ---")
 
