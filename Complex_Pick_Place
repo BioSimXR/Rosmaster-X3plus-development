@@ -1,27 +1,64 @@
-________________________________________________________________________________
 import subprocess
 import time
 
-print("Starting hardware drivers...")
+def get_active_container_name(image_keyword="ros-melodic"):
+    """
+    Finds the name of the active Docker container matching the given image keyword.
+    """
+    try:
+        # Run 'docker ps' with a format filter to return only the Image and Name
+        cmd = ["docker", "ps", "--format", "{{.Image}} {{.Names}}"]
+        output = subprocess.check_output(cmd, text=True).strip()
+        
+        # Loop through each running container line
+        for line in output.split("\n"):
+            if image_keyword in line:
+                container_name = line.split()[-1]
+                return container_name
+                
+    except Exception as e:
+        print(f"Error fetching container name: {e}")
+    
+    return None
+________________________________________________________________________________
+print("Starting Docker environment...")
+docker_start = subprocess.Popen(["/bin/bash", "./run_docker.sh"])
+
+CONTAINER_NAME = get_active_container_name("ros-melodic")
+
+def run_in_docker(ros_cmd):
+    full_cmd = (
+        f"source /opt/rps/melodic/setup.bash && "
+        f"source /root/yahboomcar_ws/devel/setup.bash && "
+        f"{ros_cmd}"
+    )
+    return subprocess.Popen([
+        "docker", "exec", -d, CONTAINER_NAME,
+        "bash", "-c", full_cmd
+    ])
 
 # 1. Launch LiDAR Driver
-lidar_proc = subprocess.Popen(["roslaunch", "ydlidar_ros_driver", "TG.launch"])
 
-# 2. Launch Astra Camera Driver
-camera_proc = subprocess.Popen(["roslaunch", "astra_camera", "astra.launch"])
+lidar_proc = run_in_docker("roslaunch ydlidar_ros_driver TG.launch")
+
+# 2. Launch Astra Camera Driver 
+
+camera_proc = run_in_docker("roslaunch astra_camera astra.launch")
 
 # 3. Publish Static TF (base_link -> laser)
-tf_proc = subprocess.Popen([
-    "rosrun", "tf", "static_transform_publisher",
-    "0.1", "0", "0.15", "0", "0", "0", "base_link", "laser", "100"
-])
 
-# 4. Launch MoveIt for the Arm
-moveit_proc = subprocess.Popen(["roslaunch", "transbot_moveit_config", "demo.launch"])
+tf_proc = run_in_docker("rosrun tf static_transform_publisher 0.1 0 0.15 0 0 0 base_link laser 100")
 
-# Wait for hardware nodes to initialize fully
+# 4. Launch MoveIt for the Arm 
+
+moveit_proc = run_in_docker("roslaunch transbot_moveit_config demo.launch")
+
+# Wait for hardware nodes to initialize fully 
+
 print("Waiting 5 seconds for drivers to initialize...")
+
 time.sleep(5)
+
 print("Drivers launched successfully!")
 ________________________________________________________________________________
 import actionlib
