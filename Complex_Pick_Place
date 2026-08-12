@@ -27,7 +27,7 @@ def run_in_docker(ros_cmd):
         f"{ros_cmd}"
     )
     return subprocess.Popen([
-        "docker", "exec", "-d", CONTAINER_NAME,
+        "docker", "exec", CONTAINER_NAME,
         "bash", "-c", full_cmd
     ])
 
