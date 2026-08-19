@@ -144,9 +144,7 @@ gripper_group.go(wait=True)
 
 # 2. Descend to object
 print("Lowering arm...")
-current_pose = arm_group.get_current_pose().pose
-current_pose.position.z -= 0.10
-arm_group.set_pose_target(current_pose)
+arm_group.set_named_target("pick")
 arm_group.go(wait=True)
 
 # 3. Close Gripper
@@ -156,8 +154,7 @@ gripper_group.go(wait=True)
 
 # 4. Lift Object
 print("Lifting object...")
-current_pose.position.z += 0.20
-arm_group.set_pose_target(current_pose)
+arm_group.set_named_target("init")
 arm_group.go(wait=True)
 
 print("Pick-and-place complete!")
