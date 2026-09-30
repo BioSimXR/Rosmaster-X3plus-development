@@ -34,19 +34,19 @@ def run_in_docker(ros_cmd):
 
 # 1. Launch LiDAR Driver
 
-lidar_proc = run_in_docker("roslaunch ydlidar_ros_driver TG.launch")
+# lidar_proc = run_in_docker("roslaunch ydlidar_ros_driver TG.launch")
 
 # 2. Launch Astra Camera Driver 
 
-camera_proc = run_in_docker("roslaunch astra_camera astra.launch")
+# camera_proc = run_in_docker("roslaunch astra_camera astra.launch")
 
 # 3. Publish Static TF (base_link -> laser)
 
-tf_proc = run_in_docker("rosrun tf static_transform_publisher 0.1 0 0.15 0 0 0 base_link laser 100")
+# tf_proc = run_in_docker("rosrun tf static_transform_publisher 0.1 0 0.15 0 0 0 base_link laser 100")
 
 # 4. Launch MoveIt for the Arm 
 
-moveit_proc = run_in_docker("roslaunch transbot_moveit_config demo.launch")
+moveit_proc = run_in_docker("roslaunch x3plus_moveit_config demo.launch")
 
 # Wait for hardware nodes to initialize fully 
 
